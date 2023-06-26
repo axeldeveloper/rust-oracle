@@ -3,15 +3,21 @@ use dotenv::dotenv;
 use oracle::{Connection, Result};
 use console::style;
 use console::Emoji;
-
+use std::env;
+use tokio;
 use crate::repo_job::Job;
-
 use futures::executor::block_on;
 
 
 #[path = "repo/repo_job.rs"] mod repo_job;
 #[path = "repo/repo_anexo.rs"] mod repo_anexo;
 #[path = "services/services_minio.rs"] mod service_minio;
+
+#[path = "minio/services_minio.rs"] mod services_minio;
+#[path = "minio/common.rs"] mod common;
+use common::get_client_minio;
+
+
 
 
 static BARRA_STR: &'static str = "---------------------------------------------------------------------------------------------";
@@ -26,10 +32,9 @@ struct Config {
 }
 
 
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     dotenv().ok();
-
-    //service_minio::list_buckets();
 
     let future = service_minio::list_buckets(); // Nothing is printed
     block_on(future); //
@@ -65,14 +70,13 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-
 fn display_db_info() -> Result<()> {
      // NOTE: Available on crate feature *clock* only.
      let db_dsn: String = std::env::var("DB_DSN").expect("DB_DSN must be set.");
      let db_user = std::env::var("DB_USER").expect("DB_USER must be set.");
      let db_pwd = std::env::var("DB_PWD").expect("DB_PWD must be set.");
      let heart_eyed_cat = '😻';
- 
+
      // Connect to a database.
      let conn = Connection::connect(db_user, db_pwd, db_dsn)?;
      let (server_ver, banner) = conn.server_version()?;
@@ -117,7 +121,6 @@ fn option_import_emp(input: String) -> Result<()> {
     Ok(())
 }
 
-
 fn option_reset_person(input: String) -> Result<()> {
     println!("* Opção Selecionado {}",  style(input).green() );
     println!("* {}",  style("Informe o numero de pessoa fisica valido ?").green() );
@@ -141,10 +144,96 @@ fn option_import_person(input: String) -> Result<()> {
 }
 
 
+async fn mainto() -> Result<()> {
+
+    let minio = get_client_minio();
+
+    services_minio::async_buckets_print().await;
+
+    println!("{:?}", minio.list_buckets().await);
+    println!("====== begin test tagging");
+
+    let r7 = services_minio::list_buckets().await;
+    match r7 {
+        Ok(bucket) => println!("Bucket is {:?}!!", bucket),
+        
+        Err(e) => eprintln!("Oh noes, we don't know which era we're in! :( \n  {}", e),
+      }
 
 
-/* 
+    println!("====== begin oracle ");
 
+    let result = ler_ora();
+
+    let response = match result {
+        Ok(res) => println!("res is {:?}!!", res) ,
+        Err(err) => return Err(err),
+    };
+
+    println!("to response {:?}!!", response);
+
+
+    let r8 = services_minio::get_object().await;
+
+    let resp = match r8 {
+        Ok(res) => println!("res is {:?}!!", res.url().path()) ,
+
+        //Err(error) => return S3Error(error)
+
+        Err(error) => {
+            panic!("=> There was a problem opening the file: {:?}", error)
+        },
+    };
+
+    println!("to resp {:?}!!", resp);
+
+    Ok(())
+
+}
+
+fn ler_ora() -> Result<()> {
+    dotenv().ok(); // Load the .env file
+    println!("Oarecle data");
+
+    let db_url = env::var("DB_URL").expect("You've not set the DB_URL");
+    let db_user = env::var("DB_USER").expect("You've not set the DB_USER");
+    let db_pwd = env::var("DB_PWD").expect("You've not set the DB_PWD");
+
+
+    // Connect to a database.
+    let conn = Connection::connect(db_user, db_pwd, db_url)?;
+    let (server_ver, banner) = conn.server_version()?;
+    println!("\nDatabase Server Version: {}", server_ver);
+    println!("\nServer Banner: {}\n", banner);
+    let sql = "select * from HR.COUNTRIES ";
+    let mut stmt = conn.statement(sql).build()?;
+    let rows = stmt.query(&[])?;
+
+    // Get the column names
+    for info in rows.column_info() {
+       print!("{} ", info.name())
+    }
+    println!("");
+
+    // Display the resultset
+    for row_result in rows {
+        // print column values
+        for (idx, val) in row_result?.sql_values().iter().enumerate() {
+            if idx != 0 {
+                print!(",");
+            }
+            print!("{}", val);
+        }
+        println!();
+    }
+    conn.close()?;
+
+    println!("\nBye");
+    Ok(())
+}
+
+
+/*
 
 fn list_users(emp: i32, conn: &Connection) -> Result<Vec<Job>>  {
     let sql: &str = "SELECT EMP_COD AS EMPRESA, CHAPA AS MATRICULA FROM REG_EMPREGOS
@@ -202,7 +291,7 @@ fn display_rows(conn: &Connection) -> Result<()> {
 //for job in result.unwrap() {
     //    println!("Found job {:?}", job.matricula);
     //}
-    
+
     match result {
         Ok(val) => {
             println!("Found job {:?}", val);
