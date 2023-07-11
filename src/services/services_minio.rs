@@ -1,11 +1,12 @@
-use std::result::Result;
-use std::error::Error;
-use minio_rsc::types::response::ListBucketResult;
-use minio_rsc::types::{Bucket};
+//use std::result::Result;
+//use std::error::Error;
+//use minio_rsc::types::response::ListBucketResult;
+//use minio_rsc::types::{Bucket};
+//use reqwest::Response;
+//use minio_rsc::types::args::{ObjectArgs, ListObjectsArgs};
+//use minio_rsc::errors::Result as MResult;
 
-use reqwest::Response;
-use minio_rsc::types::args::{ObjectArgs, ListObjectsArgs};
-use minio_rsc::errors::Result as MResult;
+
 use std::env;
 use dotenv::dotenv;
 
@@ -18,9 +19,9 @@ pub async fn buckets_print() {
     let minio_key = env::var("MINIO_ACCESS_KEY_FILE").expect("You've not set the MINIO_ACCESS_KEY_FILE");
     let minio_secret = env::var("MINIO_SECRET_KEY_FILE").expect("You've not set the MINIO_SECRET_KEY_FILE");
 
-    println!( "{:?}", minio_url );
-    println!( "{:?}", minio_key );
-    println!( "{:?}", minio_secret );
+    println!("{:?}", minio_url );
+    println!("{:?}", minio_key );
+    println!("{:?}", minio_secret );
 }
 
 

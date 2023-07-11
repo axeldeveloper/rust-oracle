@@ -2,10 +2,6 @@
 
 /*
 
-
-
-
-
 fn ler_ora() -> Result<()> {
     dotenv().ok(); // Load the .env file
     println!("Oarecle data");
