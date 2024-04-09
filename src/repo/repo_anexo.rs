@@ -1,7 +1,7 @@
-
+use chrono::{DateTime, Utc};
 use dotenv::dotenv;
 use oracle::{Connection, Result};
-use chrono::{DateTime, Utc};
+
 
 #[derive(Debug)]
 pub struct EmsAnexo {
@@ -11,10 +11,10 @@ pub struct EmsAnexo {
     pub extensao: String,
     pub seq: i32,
     pub arquivo: Option<Vec<u8>>,
-
 }
 
 pub fn list_attachments( numero: i32) -> Result<Vec<EmsAnexo>>  {
+
     dotenv().ok();
 
     let dsn: String = std::env::var("DB_DSN").expect("DB_DSN must be set.");
@@ -27,7 +27,9 @@ pub fn list_attachments( numero: i32) -> Result<Vec<EmsAnexo>>  {
     let mut stmt = db.statement(sql).build()?;
     let rows = stmt.query(&[&numero])?;
     let mut lists: Vec<EmsAnexo> = Vec::new();
+
     for row_result in rows {
+
         let row = row_result?;
 
         let some = EmsAnexo {
@@ -40,7 +42,7 @@ pub fn list_attachments( numero: i32) -> Result<Vec<EmsAnexo>>  {
         };
         lists.push(some);
     }
-    println!( " {}", lists.len());
+    println!(" Total de Registros {}", lists.len());
     //for job in list_job {
     //    println!("Found job {:?}", job.matricula);
     //}

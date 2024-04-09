@@ -1,25 +1,16 @@
 extern crate dotenv;
 
-use crate::repo_job::Job;
+
 use console::style;
 use console::Emoji;
-// use std::result::Result;
-// use std::error::Error;
 use dotenv::dotenv;
-use s3::creds::Credentials;
-use s3::error::S3Error;
 use tokio;
-use s3::Bucket;
-//use s3::creds::Credentials;
 
-
-#[path = "repo/repo_anexo.rs"] mod repo_anexo;
-#[path = "repo/repo_job.rs"] mod repo_job;
-#[path = "repo/repo_test.rs"] mod repo_test;
-#[path = "services/services_minio.rs"] mod services_minio;
-#[path = "services/services_s3.rs"] mod services_s3;
-#[path = "services/services_rusoto_s3.rs"] mod services_rusoto_s3;
-
+mod repo;
+use repo::repository::OracleRepository;
+use repo::repo_anexo;
+use repo::repo_emprego;
+use crate::repo::repo_emprego::Job;
 
 static BARRA_STR: &'static str =
     "---------------------------------------------------------------------------------------------";
@@ -28,49 +19,34 @@ const DATE_FORMAT_STR: &'static str = "%d/%m/%Y %H:%M:%S";
 
 
 #[tokio::main]
-async fn main() -> Result<(), S3Error> {
-    println!("* {}", style(BARRA_STR).green());
-    
-    services_minio::async_buckets_print().await;
-
-    //let ts = services_s3::test_list();
-
-    //let tss = services_rusoto_s3::test_list().await;
-
-    //services_rusoto_s3::get_object("/dados-pesoais/04869305135/27_1.pdf");
-
-    //services_rusoto_s3::bucket_obj_bytes("dados-pesoais".to_string(), "04869305135/27_1.pdf".to_string()).await;
-
-    Ok(())
-}
-
-
-
-//#[tokio::main]
-async fn main2()  {
+async fn main()  {
     dotenv().ok();
-
+    println!("* {}", style(BARRA_STR).green());
     let dt_current = chrono::offset::Utc::now();
-    println!("* {}", style(BARRA_STR).green());
-    println!("* {}", style(BARRA_STR).green());
-    println!("[* {}]", style("Importador do arquivo para MINIO").green());
+    println!("* {} ", style("Importador COGESP").green());
     println!("* Data Inicio: {}", dt_current.format(DATE_FORMAT_STR).to_string());
     println!("* ESCOLHA UMA DAS OPÇÕES {}  ",style("(INFORMAR APENAS NUMEROS entre (1, 2, 3)) ").on_green());
-    println!("1 -  {}  ", style("INFORMAR EMPRESA - IMPORTAR").yellow());
+    println!("0 -  {}  ", style("[PESSOAS_FISICAS] INFORMAR PESSOA - IMPORTAR").blue());
+    println!("1 -  {}  ", style("[REG_EMPREGOS] INFORMAR EMPRESA - IMPORTAR").yellow());
     println!("2 -  {}  ", style("RESETAR DOCUMENTOS DO STOREAGE").red());
-    println!("3 -  {}  ", style("INFORMAR NUMERO - IMPORTARPESSOA FISICA").green());
+    println!("3 -  {}  ", style("[EMS_DOC_ANEXOS] INFORMAR NUMERO - RETORNA EMS_DOC_ANEXOS").green());
+    println!("4 -  {}  ", style("[PESSOAS_FISICAS] INFORMAR CPF - RETORNAR PESSOA FISICA").blue());
     println!("{}", style(BARRA_STR).green());
-    println!("* {}", style("Informe o código ?").magenta());
+    println!("* {}", style(" Menu => Informe o código ?").magenta());
 
     let input = read_string();
+
     match input.trim() {
+        "0" => option_import_person_v0(input),
         "1" => option_import_emp(input),
         "2" => option_reset_person(input),
         "3" => option_import_person(input),
+        "4" => option_cpf_person(input),
         _ => println!("Rest of the number"),
     }
     let dt_current_end = chrono::offset::Utc::now();
     println!("* Data Fim: {}",dt_current_end.format(DATE_FORMAT_STR).to_string());
+
     println!("[4/4] {} Finishing processes Done!", Emoji("✨", ":-)"));
 
     noa_faz_nada().await
@@ -79,9 +55,7 @@ async fn main2()  {
 
 
 async fn noa_faz_nada(){
-    services_minio::buckets_print().await;
-
-    services_minio::async_buckets_print().await;
+    println!("* fim do Processo {}", style(" - ").green());
 }
 
 
@@ -98,13 +72,77 @@ fn convert_str_to_int(value: String) -> i32 {
     input
 }
 
+fn option_import_person_v0(input: String){
+
+    println!("* Opção Selecionado {}", style(input).green());
+    println!("* {}", style("Informe o pfis numero  ?").green());
+
+    let input_emp: String = read_string();
+    let numero = convert_str_to_int(input_emp.clone());
+
+    match OracleRepository::new("connection_string") {
+        Ok(repository) => {
+            // Crie uma variável para armazenar o resultado da consulta
+           // ID do dado a ser buscado
+            match repository.get_data_by_id(numero) {
+                Ok(data) => {
+                    match data {
+                        Some(value) => println!("Data found: {}", value),
+                        None => println!("Data not found."),
+                    }
+                }
+                Err(err) => {
+                    eprintln!("Erro ao buscar dados: {}", err);
+                }
+            }
+        }
+        Err(err) => {
+            eprintln!("Erro ao conectar ao Oracle: {}", err);
+        }
+    }
+}
+
+
+fn option_cpf_person(input: String){
+    println!("* Opção Selecionado {}", style(input).green());
+    println!("* {}", style("Informe o cpf valida ?").green());
+    let input_emp: String = read_string();
+    let cpf = convert_str_to_int(input_emp.clone());
+    //let cpf = input_emp.clone();
+    println!("* CPF Informada {}", style(cpf.to_string()).green());
+
+    match OracleRepository::new("connection_string") {
+        Ok(repository) => {
+            // Crie uma variável para armazenar o resultado da consulta
+            // ID do dado a ser buscado
+            match repository.ger_cpf(cpf) {
+                Ok(data) => {
+                    match data {
+                        Some(value) => println!("Data found: {}", value.name),
+                        None => println!("Data not found."),
+                    }
+                }
+                Err(err) => {
+                    eprintln!("Erro ao buscar dados: {}", err);
+                }
+            }
+        }
+        Err(err) => {
+            eprintln!("Erro ao conectar ao Oracle: {}", err);
+        }
+    }
+
+}
+
 fn option_import_emp(input: String)  {
     println!("* Opção Selecionado {}", style(input).green());
     println!("* {}", style("Informe o empresa valida ?").green());
     let input_emp: String = read_string();
     let emp = convert_str_to_int(input_emp.clone());
     println!("* Empresa Informada {}", style(emp.to_string()).green());
-    let result: std::result::Result<Vec<Job>, oracle::Error> = repo_job::list_jobs(emp);
+
+    let result: Result<Vec<Job>, oracle::Error> = repo_emprego::list_jobs(emp);
+
     println!("Resposta {:?}", result.unwrap().len());
     /*for job in result.unwrap() {
         println!("Found job {:?}", job.matricula);
@@ -124,11 +162,14 @@ fn option_reset_person(input: String)  {
 fn option_import_person(input: String)  {
     println!("* Opção Selecionado {}", style(input).green());
     println!("* {}",style("Informe o numero de pessoa fisica valido ?").green());
+
     let input_emp: String = read_string();
     let numero = convert_str_to_int(input_emp.clone());
-    println!("* Empresa Informada {}", style(numero.to_string()).green());
-    let result: std::result::Result<Vec<repo_anexo::EmsAnexo>, oracle::Error> =
-        repo_anexo::list_attachments(numero);
+
+    println!("* EMS_DOC_ANEXOS Informada {}", style(numero.to_string()).green());
+
+    let result: Result<Vec<repo_anexo::EmsAnexo>, oracle::Error> = repo_anexo::list_attachments(numero);
+
     println!("Resposta {:?}", result.unwrap().len());
     /*for job in result.unwrap() {
         println!("Found job {:?}", job.matricula);
